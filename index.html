@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV PlotStudio</title>
+    
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    
+    <!-- ===== CSS STYLES (styles.css equivalent) ===== -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8f6f0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.8;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 25px;
+            margin-bottom: 25px;
+            backdrop-filter: blur(10px);
+        }
+
+        .upload-area {
+            border: 3px dashed #ddd;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: #fafafa;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+            transform: translateY(-2px);
+        }
+
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #e8f2ff;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .status.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .status.loading {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e1e5e9;
+        }
+
+        .data-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .data-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 500px;
+            margin-top: 20px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .chart-container {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- ===== HTML STRUCTURE (index.html equivalent) ===== -->
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>CSV PlotStudio</h1>
+            <p>Upload your CSV file and create charts from your data</p>
+        </div>
+
+        <!-- File Upload Section -->
+        <div class="card">
+            <h2>Upload CSV File</h2>
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📄</div>
+                <p><strong>Click to upload or drag & drop your CSV file here</strong></p>
+                <p style="margin-top: 10px; color: #666;">Supports .csv files</p>
+                <input type="file" id="csvFile" class="file-input" accept=".csv">
+            </div>
+            <div id="fileStatus"></div>
+        </div>
+
+        <!-- Data Preview Section -->
+        <div class="card hidden" id="dataPreviewCard">
+            <h2>Data Preview</h2>
+            <div class="stats" id="dataStats"></div>
+            <div style="overflow-x: auto;">
+                <table class="data-table" id="dataTable">
+                    <thead id="tableHead"></thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Chart Configuration Section -->
+        <div class="card hidden" id="chartConfigCard">
+            <h2>Configure Your Chart</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="xColumn">X-axis Column</label>
+                    <select id="xColumn" class="form-control">
+                        <option value="">Select X column</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="yColumn">Y-axis Column (Numeric)</label>
+                    <select id="yColumn" class="form-control">
+                        <option value="">Select Y column</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="chartType">Chart Type</label>
+                    <select id="chartType" class="form-control">
+                        <option value="line">Line Chart</option>
+                        <option value="scatter">Scatter Plot</option>
+                        <option value="bar">Bar Chart</option>
+                    </select>
+                </div>
+            </div>
+            <button class="btn" id="generateChart" disabled>Generate Chart</button>
+        </div>
+
+        <!-- Chart Display Section -->
+        <div class="card hidden" id="chartDisplayCard">
+            <h2 id="chartTitle">Your Visualization</h2>
+            <div class="chart-container">
+                <canvas id="chartCanvas"></canvas>
+            </div>
+            <div id="chartInfo" style="margin-top: 15px; color: #666;"></div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="card" id="instructionsCard">
+            <h2>How to Use CSV PlotStudio</h2>
+            <div style="color: #666; line-height: 1.6;">
+                <p><strong>Step 1:</strong> Upload your CSV file using the upload area above</p>
+                <p><strong>Step 2:</strong> Review the data preview to understand your dataset structure</p>
+                <p><strong>Step 3:</strong> Select which columns to plot on X and Y axes</p>
+                <p><strong>Step 4:</strong> Choose your preferred chart type (Line, Scatter, or Bar)</p>
+                <p><strong>Step 5:</strong> Click "Generate Chart" to create your visualization</p>
+                <br>
+                <p><em>Note: Y-axis must be numeric data for proper plotting</em></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== JAVASCRIPT LOGIC (script.js equivalent) ===== -->
+    <script>
+        // Global variables for data management
+        let csvData = [];
+        let headers = [];
+        let currentChart = null;
+
+        // DOM elements
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('csvFile');
+        const fileStatus = document.getElementById('fileStatus');
+        const dataPreviewCard = document.getElementById('dataPreviewCard');
+        const chartConfigCard = document.getElementById('chartConfigCard');
+        const chartDisplayCard = document.getElementById('chartDisplayCard');
+        const instructionsCard = document.getElementById('instructionsCard');
+        const xColumnSelect = document.getElementById('xColumn');
+        const yColumnSelect = document.getElementById('yColumn');
+        const chartTypeSelect = document.getElementById('chartType');
+        const generateChartBtn = document.getElementById('generateChart');
+        const chartCanvas = document.getElementById('chartCanvas');
+        const chartTitle = document.getElementById('chartTitle');
+        const chartInfo = document.getElementById('chartInfo');
+
+        // File upload event listeners
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', handleDragOver);
+        uploadArea.addEventListener('drop', handleDrop);
+        uploadArea.addEventListener('dragleave', handleDragLeave);
+        fileInput.addEventListener('change', handleFileSelect);
+
+        // Chart configuration event listeners
+        xColumnSelect.addEventListener('change', validateChartInputs);
+        yColumnSelect.addEventListener('change', validateChartInputs);
+        chartTypeSelect.addEventListener('change', validateChartInputs);
+        generateChartBtn.addEventListener('click', generateChart);
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                processFile(files[0]);
+            }
+        }
+
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
+                processFile(file);
+            }
+        }
+
+        function showStatus(message, type) {
+            fileStatus.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        function processFile(file) {
+            if (!file.name.toLowerCase().endsWith('.csv')) {
+                showStatus('❌ Please select a CSV file', 'error');
+                return;
+            }
+
+            showStatus('🔄 Processing CSV file...', 'loading');
+
+            Papa.parse(file, {
+                complete: function(results) {
+                    try {
+                        if (results.errors.length > 0) {
+                            showStatus('❌ Error parsing CSV: ' + results.errors[0].message, 'error');
+                            return;
+                        }
+
+                        // Filter out empty rows
+                        const data = results.data.filter(row => 
+                            row.some(cell => cell && cell.trim() !== '')
+                        );
+
+                        if (data.length < 2) {
+                            showStatus('❌ CSV file must contain at least a header row and one data row', 'error');
+                            return;
+                        }
+
+                        // Extract headers and process data
+                        headers = data[0].map(header => header.trim());
+                        const rows = data.slice(1);
+
+                        // Create dataframe-like structure
+                        csvData = rows.map((row, index) => {
+                            const rowData = { _index: index };
+                            headers.forEach((header, colIndex) => {
+                                let value = row[colIndex]?.trim() || '';
+                                
+                                // Try to convert to number
+                                if (value !== '' && !isNaN(value) && !isNaN(parseFloat(value))) {
+                                    rowData[header] = parseFloat(value);
+                                } else {
+                                    rowData[header] = value;
+                                }
+                            });
+                            return rowData;
+                        });
+
+                        showStatus(`✅ Successfully loaded: ${file.name} (${csvData.length} rows, ${headers.length} columns)`, 'success');
+                        
+                        // Show data preview and configuration
+                        displayDataPreview();
+                        setupChartConfiguration();
+                        
+                        // Hide instructions
+                        instructionsCard.classList.add('hidden');
+
+                    } catch (error) {
+                        showStatus('❌ Error processing CSV: ' + error.message, 'error');
+                    }
+                },
+                header: false,
+                skipEmptyLines: true,
+                dynamicTyping: false,
+                error: function(error) {
+                    showStatus('❌ Error reading file: ' + error.message, 'error');
+                }
+            });
+        }
+
+        function displayDataPreview() {
+            // Show stats
+            const dataStats = document.getElementById('dataStats');
+            dataStats.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-number">${csvData.length}</div>
+                    <div class="stat-label">Rows</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${headers.length}</div>
+                    <div class="stat-label">Columns</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${getNumericColumns().length}</div>
+                    <div class="stat-label">Numeric Columns</div>
+                </div>
+            `;
+
+            // Show table headers
+            const tableHead = document.getElementById('tableHead');
+            tableHead.innerHTML = '<tr>' + headers.map(header => 
+                `<th>${header}</th>`
+            ).join('') + '</tr>';
+
+            // Show first 5 rows
+            const tableBody = document.getElementById('tableBody');
+            const previewRows = csvData.slice(0, 5);
+            tableBody.innerHTML = previewRows.map(row => 
+                '<tr>' + headers.map(header => {
+                    const value = row[header];
+                    const displayValue = typeof value === 'number' ? value.toFixed(2) : String(value);
+                    return `<td>${displayValue}</td>`;
+                }).join('') + '</tr>'
+            ).join('');
+
+            dataPreviewCard.classList.remove('hidden');
+        }
+
+        function getNumericColumns() {
+            if (!csvData || csvData.length === 0) return [];
+            
+            return headers.filter(header => {
+                return csvData.some(row => typeof row[header] === 'number' && !isNaN(row[header]));
+            });
+        }
+
+        function setupChartConfiguration() {
+            // Populate X column dropdown (all columns)
+            xColumnSelect.innerHTML = '<option value="">Select X column</option>' +
+                headers.map(header => `<option value="${header}">${header}</option>`).join('');
+
+            // Populate Y column dropdown (numeric columns only)
+            const numericColumns = getNumericColumns();
+            yColumnSelect.innerHTML = '<option value="">Select Y column (numeric)</option>' +
+                numericColumns.map(header => `<option value="${header}">${header}</option>`).join('');
+
+            chartConfigCard.classList.remove('hidden');
+        }
+
+        function validateChartInputs() {
+            const hasXColumn = xColumnSelect.value !== '';
+            const hasYColumn = yColumnSelect.value !== '';
+            generateChartBtn.disabled = !(hasXColumn && hasYColumn);
+        }
+
+        function generateChart() {
+            const xColumn = xColumnSelect.value;
+            const yColumn = yColumnSelect.value;
+            const chartType = chartTypeSelect.value;
+
+            if (!xColumn || !yColumn) {
+                alert('Please select both X and Y columns');
+                return;
+            }
+
+            // Prepare chart data
+            const chartData = csvData.map(row => ({
+                x: row[xColumn],
+                y: row[yColumn]
+            })).filter(item => item.x != null && item.y != null);
+
+            if (chartData.length === 0) {
+                alert('No valid data points found for the selected columns');
+                return;
+            }
+
+            // Destroy existing chart
+            if (currentChart) {
+                currentChart.destroy();
+            }
+
+            // Update chart title
+            const chartTypeNames = {
+                'line': 'Line Chart',
+                'scatter': 'Scatter Plot',
+                'bar': 'Bar Chart'
+            };
+            chartTitle.textContent = `${chartTypeNames[chartType]}: ${yColumn} vs ${xColumn}`;
+
+            // Create chart based on type
+            createChart(chartData, xColumn, yColumn, chartType);
+
+            // Update chart info
+            chartInfo.innerHTML = `
+                <p><strong>Data Points:</strong> ${chartData.length}</p>
+                <p><strong>X-axis:</strong> ${xColumn}</p>
+                <p><strong>Y-axis:</strong> ${yColumn}</p>
+            `;
+
+            chartDisplayCard.classList.remove('hidden');
+        }
+
+        function createChart(data, xColumn, yColumn, chartType) {
+            const ctx = chartCanvas.getContext('2d');
+
+            let chartConfig = {
+                type: chartType === 'scatter' ? 'scatter' : chartType,
+                data: {
+                    datasets: [{
+                        label: `${yColumn} vs ${xColumn}`,
+                        data: data,
+                        backgroundColor: chartType === 'line' ? 'rgba(102, 126, 234, 0.2)' : 
+                                       chartType === 'scatter' ? 'rgba(16, 185, 129, 0.6)' :
+                                       'rgba(245, 158, 11, 0.8)',
+                        borderColor: chartType === 'line' ? 'rgba(102, 126, 234, 1)' : 
+                                   chartType === 'scatter' ? 'rgba(16, 185, 129, 1)' :
+                                   'rgba(245, 158, 11, 1)',
+                        borderWidth: 2,
+                        pointRadius: chartType === 'scatter' ? 5 : 4,
+                        pointHoverRadius: chartType === 'scatter' ? 7 : 6,
+                        tension: chartType === 'line' ? 0.4 : 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `${yColumn} vs ${xColumn}`,
+                            font: {
+                                size: 16,
+                                weight: 'bold'
+                            }
+                        },
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: xColumn,
+                                font: {
+                                    weight: 'bold'
+                                }
+                            },
+                            grid: {
+                                display: true,
+                                color: 'rgba(0,0,0,0.1)'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: yColumn,
+                                font: {
+                                    weight: 'bold'
+                                }
+                            },
+                            grid: {
+                                display: true,
+                                color: 'rgba(0,0,0,0.1)'
+                            }
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    }
+                }
+            };
+
+            // Handle different chart types
+            if (chartType === 'bar') {
+                // For bar charts, we need labels and data arrays
+                const limitedData = data.slice(0, 20); // Limit to 20 points for readability
+                chartConfig.data.labels = limitedData.map(item => String(item.x));
+                chartConfig.data.datasets[0].data = limitedData.map(item => item.y);
+                delete chartConfig.options.scales.x.type;
+                
+                if (limitedData.length < data.length) {
+                    chartInfo.innerHTML += `<p style="color: #f59e0b;"><strong>Note:</strong> Bar chart limited to first 20 data points for readability</p>`;
+                }
+            } else if (chartType === 'scatter') {
+                chartConfig.options.scales.x.type = 'linear';
+                chartConfig.options.scales.y.type = 'linear';
+            }
+
+            // Create the chart
+            currentChart = new Chart(ctx, chartConfig);
+        }
+
+        // Initialize the application
+        function init() {
+            console.log('CSV PlotStudio initialized');
+        }
+
+        // Start the application when DOM is loaded
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
